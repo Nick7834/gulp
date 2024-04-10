@@ -132,7 +132,7 @@ const stylesBackend = () => {
 
 // scripts
 const scripts = () => {
-  return src(paths.srcMainJs)
+  return src(paths.srcFullJs)
     .pipe(plumber(
       notify.onError({
         title: "JS",
@@ -142,23 +142,42 @@ const scripts = () => {
     .pipe(webpackStream({
       mode: isProd ? 'production' : 'development',
       output: {
-        filename: 'main.js',
+        filename: '[name].js', // Добавьте это свойство
+      },
+      entry: { // Добавьте это свойство
+        main: paths.srcMainJs,
+        // sliders: './src/js/sliders.js',
+        // mainPage: './src/js/mainPage.js',
+        // Добавьте другие точки входа, если есть
       },
       module: {
-        rules: [{
-          test: /\.m?js$/,
-          exclude: /node_modules/,
-          use: {
-            loader: 'babel-loader',
-            options: {
-              presets: [
-                ['@babel/preset-env', {
-                  targets: "defaults"
-                }]
-              ]
+        rules: [
+          {
+            test: /\.m?js$/,
+            exclude: /node_modules/,
+            use: {
+              loader: 'babel-loader',
+              options: {
+                presets: [
+                  ['@babel/preset-env', {
+                    targets: "defaults"
+                  }]
+                ]
+              }
             }
-          }
-        }]
+          },
+          {
+            test: /\.css$/,
+            use: ['style-loader', 'css-loader']
+          },
+          // Add this rule for font files
+          {
+            test: /\.(woff|woff2|eot|ttf|otf)$/,
+            use: [
+              'file-loader',
+            ],
+          },
+        ]
       },
       devtool: !isProd ? 'source-map' : false
     }))
@@ -168,7 +187,7 @@ const scripts = () => {
     })
     .pipe(dest(paths.buildJsFolder))
     .pipe(browserSync.stream());
-}
+};
 
 // scripts backend
 const scriptsBackend = () => {
@@ -239,26 +258,28 @@ const htmlInclude = () => {
   return src([`${srcFolder}/*.html`])
     .pipe(fileInclude({
       prefix: '@',
-      basepath: '@file'
+      basepath: '@file',
     }))
+    .pipe(replace(/&nbsp;/g, ' '))
     .pipe(typograf({
-      locale: ['ru', 'en-US']
+      locale: ['ru', 'en-US'],
     }))
     .pipe(dest(buildFolder))
     .pipe(browserSync.stream());
-}
+};
 
 const watchFiles = () => {
   browserSync.init({
     server: {
       baseDir: `${buildFolder}`
     },
+    notify: false,
   });
 
   watch(paths.srcScss, styles);
   watch(paths.srcFullJs, scripts);
-  watch(`${paths.srcPartialsFolder}/*.html`, htmlInclude);
-  watch(`${srcFolder}/*.html`, htmlInclude);
+  watch(`${paths.srcPartialsFolder}/**/*.html`, htmlInclude);
+  watch(`${srcFolder}/**/*.html`, htmlInclude);
   watch(`${paths.resourcesFolder}/**`, resources);
   watch(`${paths.srcImgFolder}/**/**.{jpg,jpeg,png,svg}`, images);
   watch(`${paths.srcImgFolder}/**/**.{jpg,jpeg,png}`, webpImages);
